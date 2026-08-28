@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"pipelineguard/internal/analyzer"
+	"pipelineguard/internal/banner"
 	"pipelineguard/internal/output"
 	"pipelineguard/internal/policy"
 	"pipelineguard/internal/provider"
@@ -33,6 +34,7 @@ Scan options:
   --trivy                Enable Trivy dependency vulnerability provider
   --sbom PATH            Generate CycloneDX JSON SBOM with Syft
   --provider-timeout D   External provider timeout (default 3m)
+  --no-banner            Disable interactive startup banner
 
 Exit codes:
   0   Policy result is ALLOW or WARN
@@ -40,6 +42,16 @@ Exit codes:
   2   Policy result is BLOCK
 
 `)
+}
+
+func stdoutIsTerminal() bool {
+	info, err := os.Stdout.Stat()
+
+	if err != nil {
+		return false
+	}
+
+	return info.Mode()&os.ModeCharDevice != 0
 }
 
 func runScan(args []string) int {
@@ -82,6 +94,12 @@ func runScan(args []string) int {
 		"provider-timeout",
 		3*time.Minute,
 		"external provider timeout",
+	)
+
+	noBanner := flags.Bool(
+		"no-banner",
+		false,
+		"disable interactive startup banner",
 	)
 
 	if err := flags.Parse(args); err != nil {
@@ -178,6 +196,17 @@ func runScan(args []string) int {
 		}
 
 		result.SBOM = artifact
+	}
+
+	if *format == "text" &&
+		*outputPath == "" &&
+		!*noBanner &&
+		stdoutIsTerminal() {
+
+		banner.Print(
+			os.Stdout,
+			true,
+		)
 	}
 
 	render := func(w io.Writer) error {
