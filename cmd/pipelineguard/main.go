@@ -3,10 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
 	"pipelineguard/internal/analyzer"
+	"pipelineguard/internal/output"
 	"pipelineguard/internal/policy"
 	"pipelineguard/internal/provider"
 	"pipelineguard/internal/report"
@@ -26,10 +28,16 @@ Usage:
 
 Scan options:
   --policy PATH          Policy configuration file
-  --format FORMAT        text or json
+  --format FORMAT        text, json, sarif or html
+  --output PATH          Write report atomically to file
   --trivy                Enable Trivy dependency vulnerability provider
   --sbom PATH            Generate CycloneDX JSON SBOM with Syft
   --provider-timeout D   External provider timeout (default 3m)
+
+Exit codes:
+  0   Policy result is ALLOW or WARN
+  1   PipelineGuard execution error
+  2   Policy result is BLOCK
 
 `)
 }
@@ -49,7 +57,13 @@ func runScan(args []string) int {
 	format := flags.String(
 		"format",
 		"text",
-		"output format: text or json",
+		"output format",
+	)
+
+	outputPath := flags.String(
+		"output",
+		"",
+		"report output path",
 	)
 
 	enableTrivy := flags.Bool(
@@ -74,6 +88,17 @@ func runScan(args []string) int {
 		return 1
 	}
 
+	switch *format {
+	case "text", "json", "sarif", "html":
+	default:
+		fmt.Fprintf(
+			os.Stderr,
+			"ERROR: unsupported format: %s\n",
+			*format,
+		)
+		return 1
+	}
+
 	root := "."
 
 	if flags.NArg() > 1 {
@@ -92,6 +117,7 @@ func runScan(args []string) int {
 
 	if *policyPath != "" {
 		loaded, err := policy.Load(*policyPath)
+
 		if err != nil {
 			fmt.Fprintf(
 				os.Stderr,
@@ -125,6 +151,7 @@ func runScan(args []string) int {
 		analyzers,
 		version,
 	)
+
 	if err != nil {
 		fmt.Fprintf(
 			os.Stderr,
@@ -153,26 +180,35 @@ func runScan(args []string) int {
 		result.SBOM = artifact
 	}
 
-	switch *format {
-	case "text":
-		err = report.Text(os.Stdout, result)
+	render := func(w io.Writer) error {
+		switch *format {
+		case "text":
+			return report.Text(w, result)
 
-	case "json":
-		err = report.JSON(os.Stdout, result)
+		case "json":
+			return report.JSON(w, result)
 
-	default:
-		fmt.Fprintf(
-			os.Stderr,
-			"ERROR: unsupported format: %s\n",
+		case "sarif":
+			return report.SARIF(w, result)
+
+		case "html":
+			return report.HTML(w, result)
+		}
+
+		return fmt.Errorf(
+			"unhandled output format: %s",
 			*format,
 		)
-		return 1
 	}
 
-	if err != nil {
+	if err := output.Render(
+		*outputPath,
+		render,
+	); err != nil {
+
 		fmt.Fprintf(
 			os.Stderr,
-			"ERROR: render report: %v\n",
+			"ERROR: %v\n",
 			err,
 		)
 		return 1

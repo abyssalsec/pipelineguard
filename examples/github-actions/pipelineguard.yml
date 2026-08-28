@@ -1,0 +1,88 @@
+name: PipelineGuard
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  pipelineguard:
+    name: DevSecOps Security Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout application
+        uses: actions/checkout@v4
+
+      - name: Checkout PipelineGuard
+        uses: actions/checkout@v4
+        with:
+          repository: abyssalsec/pipelineguard
+          ref: v0.4.0
+          path: .pipelineguard-tool
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: .pipelineguard-tool/go.mod
+          cache: false
+
+      - name: Build PipelineGuard
+        working-directory: .pipelineguard-tool
+        run: make build
+
+      - name: Run PipelineGuard
+        id: security_gate
+        shell: bash
+        run: |
+          set +e
+
+          ./.pipelineguard-tool/bin/pipelineguard scan \
+            --policy .pipelineguard.yml \
+            --format sarif \
+            --output pipelineguard.sarif \
+            .
+
+          rc=$?
+
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+
+          exit 0
+
+      - name: Upload PipelineGuard SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: pipelineguard.sarif
+          category: pipelineguard
+
+      - name: Upload PipelineGuard report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipelineguard-sarif
+          path: pipelineguard.sarif
+
+      - name: Enforce PipelineGuard decision
+        shell: bash
+        run: |
+          rc="${{ steps.security_gate.outputs.exit_code }}"
+
+          case "$rc" in
+            0)
+              echo "PipelineGuard policy passed."
+              ;;
+
+            2)
+              echo "PipelineGuard blocked this pipeline."
+              exit 2
+              ;;
+
+            *)
+              echo "PipelineGuard execution failed with exit code ${rc}."
+              exit 1
+              ;;
+          esac
