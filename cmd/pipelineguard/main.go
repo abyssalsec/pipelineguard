@@ -83,6 +83,8 @@ func runScan(args []string) int {
 		analyzer.DockerAnalyzer{},
 		analyzer.GitHubActionsAnalyzer{},
 		analyzer.SecretsAnalyzer{},
+		analyzer.TerraformAnalyzer{},
+		analyzer.KubernetesAnalyzer{},
 	}
 
 	result, err := scan.Run(

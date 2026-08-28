@@ -19,3 +19,14 @@ rules:
   secrets.aws-access-key: block
   secrets.github-token: block
   secrets.private-key: block
+
+  terraform.world-open-ipv4: block
+  terraform.world-open-ipv6: block
+  terraform.public-ip: warn
+  terraform.public-read-acl: block
+
+  kubernetes.privileged-container: block
+  kubernetes.host-network: block
+  kubernetes.host-pid: block
+  kubernetes.run-as-non-root: warn
+  kubernetes.unpinned-image: warn

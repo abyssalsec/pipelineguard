@@ -47,6 +47,7 @@ type Result struct {
 	Version       string             `json:"version"`
 	Root          string             `json:"root"`
 	FilesScanned  int                `json:"files_scanned"`
+	RiskScore     int                `json:"risk_score"`
 	Decision      string             `json:"decision"`
 	Summary       Summary            `json:"summary"`
 	Findings      []EvaluatedFinding `json:"findings"`

@@ -58,6 +58,12 @@ func Text(w io.Writer, result model.Result) error {
 
 	fmt.Fprintf(
 		w,
+		"Risk score: %d/100\n",
+		result.RiskScore,
+	)
+
+	fmt.Fprintf(
+		w,
 		"\nPOLICY RESULT: %s\n",
 		result.Decision,
 	)
