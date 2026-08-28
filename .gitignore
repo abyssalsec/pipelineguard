@@ -1,0 +1,9 @@
+/bin/
+/dist/
+/.reports/
+/.cache/
+coverage.out
+*.log
+.DS_Store
+.idea/
+.vscode/
