@@ -2,7 +2,7 @@ VERSION := $(shell cat VERSION)
 BINARY := bin/pipelineguard
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
-.PHONY: build test fmt fmt-check vet clean check
+.PHONY: build test race fmt fmt-check vet clean check release
 
 build:
 	mkdir -p bin
@@ -14,6 +14,9 @@ build:
 
 test:
 	go test ./...
+
+race:
+	go test -race ./...
 
 fmt:
 	gofmt -w cmd internal
@@ -31,5 +34,8 @@ vet:
 
 check: fmt-check vet test build
 
+release: check
+	./scripts/release.sh
+
 clean:
-	rm -rf bin
+	rm -rf bin dist

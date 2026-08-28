@@ -11,7 +11,7 @@ jobs:
   quality:
     name: Go Quality Gate
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -23,8 +23,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run quality gate
+      - name: Format, vet, test and build
         run: make check
+
+      - name: Race detector
+        run: make race
 
   reports:
     name: Report Integration
@@ -44,7 +47,7 @@ jobs:
       - name: Build PipelineGuard
         run: make build
 
-      - name: Generate JSON report
+      - name: Generate reports
         run: |
           mkdir -p .reports
 
@@ -54,16 +57,12 @@ jobs:
             --output .reports/secure.json \
             testdata/secure
 
-      - name: Generate SARIF report
-        run: |
           ./bin/pipelineguard scan \
             --policy .pipelineguard.yml \
             --format sarif \
             --output .reports/secure.sarif \
             testdata/secure
 
-      - name: Generate HTML report
-        run: |
           ./bin/pipelineguard scan \
             --policy .pipelineguard.yml \
             --format html \
