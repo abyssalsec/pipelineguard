@@ -47,6 +47,14 @@ func Text(w io.Writer, result model.Result) error {
 		fmt.Fprintln(w)
 	}
 
+	if result.SBOM != "" {
+		fmt.Fprintf(
+			w,
+			"SBOM: %s\n\n",
+			result.SBOM,
+		)
+	}
+
 	fmt.Fprintf(
 		w,
 		"Summary: findings=%d allowed=%d warnings=%d blocked=%d\n",

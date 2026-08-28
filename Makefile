@@ -1,10 +1,16 @@
+VERSION := $(shell cat VERSION)
 BINARY := bin/pipelineguard
+LDFLAGS := -s -w -X main.version=$(VERSION)
 
 .PHONY: build test fmt vet clean
 
 build:
 	mkdir -p bin
-	go build -o $(BINARY) ./cmd/pipelineguard
+	go build \
+		-trimpath \
+		-ldflags "$(LDFLAGS)" \
+		-o $(BINARY) \
+		./cmd/pipelineguard
 
 test:
 	go test ./...

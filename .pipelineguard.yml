@@ -30,3 +30,9 @@ rules:
   kubernetes.host-pid: block
   kubernetes.run-as-non-root: warn
   kubernetes.unpinned-image: warn
+
+  dependencies.vulnerability.critical: block
+  dependencies.vulnerability.high: block
+  dependencies.vulnerability.medium: warn
+  dependencies.vulnerability.low: allow
+  dependencies.vulnerability.unknown: warn

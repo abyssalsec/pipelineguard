@@ -4,14 +4,17 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"pipelineguard/internal/analyzer"
 	"pipelineguard/internal/policy"
+	"pipelineguard/internal/provider"
 	"pipelineguard/internal/report"
+	"pipelineguard/internal/sbom"
 	"pipelineguard/internal/scan"
 )
 
-const version = "0.1.0"
+var version = "dev"
 
 func usage() {
 	fmt.Print(`PipelineGuard
@@ -22,8 +25,12 @@ Usage:
   pipelineguard help
 
 Scan options:
-  --policy PATH       Policy configuration file
-  --format FORMAT     text or json
+  --policy PATH          Policy configuration file
+  --format FORMAT        text or json
+  --trivy                Enable Trivy dependency vulnerability provider
+  --sbom PATH            Generate CycloneDX JSON SBOM with Syft
+  --provider-timeout D   External provider timeout (default 3m)
+
 `)
 }
 
@@ -43,6 +50,24 @@ func runScan(args []string) int {
 		"format",
 		"text",
 		"output format: text or json",
+	)
+
+	enableTrivy := flags.Bool(
+		"trivy",
+		false,
+		"enable Trivy vulnerability provider",
+	)
+
+	sbomPath := flags.String(
+		"sbom",
+		"",
+		"generate CycloneDX JSON SBOM",
+	)
+
+	providerTimeout := flags.Duration(
+		"provider-timeout",
+		3*time.Minute,
+		"external provider timeout",
 	)
 
 	if err := flags.Parse(args); err != nil {
@@ -87,6 +112,13 @@ func runScan(args []string) int {
 		analyzer.KubernetesAnalyzer{},
 	}
 
+	if *enableTrivy {
+		analyzers = append(
+			analyzers,
+			provider.NewTrivyAnalyzer(*providerTimeout),
+		)
+	}
+
 	result, err := scan.Run(
 		root,
 		cfg,
@@ -100,6 +132,25 @@ func runScan(args []string) int {
 			err,
 		)
 		return 1
+	}
+
+	if *sbomPath != "" {
+		artifact, err := sbom.Generate(
+			root,
+			*sbomPath,
+			*providerTimeout,
+		)
+
+		if err != nil {
+			fmt.Fprintf(
+				os.Stderr,
+				"ERROR: generate SBOM: %v\n",
+				err,
+			)
+			return 1
+		}
+
+		result.SBOM = artifact
 	}
 
 	switch *format {
@@ -160,6 +211,7 @@ func main() {
 			"ERROR: unknown command: %s\n\n",
 			os.Args[1],
 		)
+
 		usage()
 		rc = 1
 	}

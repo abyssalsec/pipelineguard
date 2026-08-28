@@ -49,6 +49,7 @@ type Result struct {
 	FilesScanned  int                `json:"files_scanned"`
 	RiskScore     int                `json:"risk_score"`
 	Decision      string             `json:"decision"`
+	SBOM          string             `json:"sbom,omitempty"`
 	Summary       Summary            `json:"summary"`
 	Findings      []EvaluatedFinding `json:"findings"`
 }
